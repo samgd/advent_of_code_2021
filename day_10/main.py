@@ -28,11 +28,10 @@ def check_line(line: str) -> None:
         >>> check_line(line)
 
         >>> line = '([<>]'
-    
         >>> check_line(line)
         Traceback (most recent call last):
         ...
-        main.Incomplete
+        main.Incomplete: [')']
 
         >>> line = '{([(<{}[<>[]}>{[]{[(<()>'
         >>> check_line(line)
