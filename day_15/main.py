@@ -172,7 +172,7 @@ def neighbours(p: Position, maxx: int, maxy: int) -> Iterable[Position]:
 
 
 def lowest_risk(grid: List[List[int]], start: Position, end: Position) -> int:
-    r"""TODO
+    r"""Returns the risk of the path of lowest risk.
 
     Example:
 
