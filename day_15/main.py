@@ -58,6 +58,9 @@ class MinPriorityQueue:
         self._queue = [] 
         self._pos = {}
         
+    def __contains__(self, item) -> bool:
+        return item in self._pos
+        
     def __len__(self) -> int:
         return len(self._queue)
         
@@ -114,7 +117,7 @@ class MinPriorityQueue:
         
     def change(self, item: Hashable, new_priority: int):
         if item not in self._pos:
-            raise ValueError(f"unknown item {item}")
+            return self.insert(item, new_priority)
         current = self._queue[self._pos[item]]
         prev_priority = current.priority
         current.priority = new_priority
@@ -184,9 +187,6 @@ def lowest_risk(grid: List[List[int]], start: Position, end: Position) -> int:
     """
     maxx, maxy = len(grid[0]) - 1, len(grid) - 1
     pq = MinPriorityQueue()
-    for x in range(maxx + 1):
-        for y in range(maxy + 1):
-            pq.insert(Position(x, y), 99999)
     pq.change(start, 0)
     visited = set()
 
@@ -199,7 +199,7 @@ def lowest_risk(grid: List[List[int]], start: Position, end: Position) -> int:
             if neighbour in visited:
                 continue
             path_risk = risk + grid[neighbour.y][neighbour.x]
-            if path_risk < pq.find(neighbour):
+            if neighbour not in pq or path_risk < pq.find(neighbour):
                 pq.change(neighbour, path_risk)
 
     raise ValueError("failed to find path to end")
