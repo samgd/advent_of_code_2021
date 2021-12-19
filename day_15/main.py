@@ -16,6 +16,29 @@ from typing import List
 Position = namedtuple("Position", ['x', 'y'])
 
 
+class Grid:
+    def __init__(self, grid: List[List[int]], n: int = 1):
+        self.grid = grid
+        self.n = n
+
+    @property
+    def maxx(self) -> int:
+        return self.n*len(self.grid[0]) - 1
+
+    @property
+    def maxy(self) -> int:
+        return self.n*len(self.grid) - 1
+        
+    def __getitem__(self, pos: Position) -> int:
+        assert pos.x < self.n * len(self.grid[0])
+        assert pos.y < self.n * len(self.grid)
+        x_sect, x_off = divmod(pos.x, len(self.grid[0]))
+        y_sect, y_off = divmod(pos.y, len(self.grid))
+        risk = self.grid[y_off][x_off]
+        risk = 1 + ((risk - 1 + x_sect + y_sect) % 9)
+        return risk
+    
+
 class MinPriorityQueue:
     """A min priority queue with O(logn) insert, pop and change.
     
@@ -77,21 +100,23 @@ class MinPriorityQueue:
             self._pos[entry.item] = parent_idx
             self._pos[parent.item] = index
             index = parent_idx
-        
+
+    @profile
     def _perculate_down(self, index: int) -> int:
+        queue_len = len(self._queue)
         while True:
             l_idx, r_idx = 2*index + 1, 2*index + 2
-            if len(self._queue) - 1 < l_idx:
+            if queue_len - 1 < l_idx:
                 # no children
                 break
             min_child, min_idx = self._queue[l_idx], l_idx
-            if len(self._queue) - 1 >= r_idx:
+            if queue_len - 1 >= r_idx:
                 right = self._queue[r_idx]
                 if right.priority < min_child.priority:
                     min_child, min_idx = right, r_idx
-            if min_child.priority >= self._queue[index].priority:
-                break
             entry = self._queue[index]
+            if min_child.priority >= entry.priority:
+                break
             self._queue[index], self._queue[min_idx] = min_child, entry
             self._pos[min_child.item], self._pos[entry.item] = index, min_idx
             index = min_idx
@@ -130,7 +155,7 @@ class MinPriorityQueue:
         return self._queue[self._pos[item]].priority
 
 
-def parse_input(data: Iterable[str]) -> List[List[int]]:
+def parse_input(data: Iterable[str]) -> Grid:
     r"""Returns the risk level map from data.
     
     Example:
@@ -138,10 +163,11 @@ def parse_input(data: Iterable[str]) -> List[List[int]]:
         >>> data = iter('''123
         ... 456
         ... 789'''.split('\n'))
-        >>> parse_input(data)
+        >>> grid = parse_input(data)
+        >>> [[grid[Position(x, y)] for x in range(3)] for y in range(3)]
         [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
     """
-    return [[int(l) for l in line.strip()] for line in data]
+    return Grid([[int(l) for l in line.strip()] for line in data])
 
 
 def neighbours(p: Position, maxx: int, maxy: int) -> Iterable[Position]:
@@ -171,7 +197,7 @@ def neighbours(p: Position, maxx: int, maxy: int) -> Iterable[Position]:
             yield Position(nx, ny)
 
 
-def lowest_risk(grid: List[List[int]], start: Position, end: Position) -> int:
+def lowest_risk(grid: Grid, start: Position, end: Position) -> int:
     r"""Returns the risk of the path of lowest risk.
 
     Example:
@@ -185,7 +211,6 @@ def lowest_risk(grid: List[List[int]], start: Position, end: Position) -> int:
         >>> lowest_risk(grid, start, end)
         4
     """
-    maxx, maxy = len(grid[0]) - 1, len(grid) - 1
     pq = MinPriorityQueue()
     pq.change(start, 0)
     visited = set()
@@ -195,33 +220,14 @@ def lowest_risk(grid: List[List[int]], start: Position, end: Position) -> int:
         visited.add(pos)
         if pos == end:
             return risk
-        for neighbour in neighbours(pos, maxx, maxy):
+        for neighbour in neighbours(pos, grid.maxx, grid.maxy):
             if neighbour in visited:
                 continue
-            path_risk = risk + grid[neighbour.y][neighbour.x]
+            path_risk = risk + grid[neighbour]
             if neighbour not in pq or path_risk < pq.find(neighbour):
                 pq.change(neighbour, path_risk)
 
     raise ValueError("failed to find path to end")
-    
-
-def expand(grid: List[List[int]], n: int = 5) -> List[List[int]]:
-    new_grid = []
-    # extend horizontally
-    for row in grid:
-        new_row = copy(row)
-        for i in range(1, n):
-            for e in row:
-                new_row.append(1 + ((e + i - 1) % 9))
-        new_grid.append(new_row)
-
-    # extend vertically
-    ext_grid = []
-    for i in range(0, n):
-        for row in new_grid:
-            ext_grid.append([1 + ((e + i - 1) % 9) for e in row])
-
-    return ext_grid
     
 
 if __name__ == "__main__":
@@ -233,10 +239,10 @@ if __name__ == "__main__":
         grid = parse_input(f)
         
     start = Position(0, 0)
-    end = Position(len(grid[0]) - 1, len(grid) - 1)
+    end = Position(grid.maxx, grid.maxy)
 
     print(lowest_risk(grid, start, end))
 
-    grid = expand(grid)
-    end = Position(len(grid[0]) - 1, len(grid) - 1)
+    grid.n = 5
+    end = Position(grid.maxx, grid.maxy)
     print(lowest_risk(grid, start, end))
